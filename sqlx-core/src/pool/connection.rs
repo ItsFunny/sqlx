@@ -123,7 +123,7 @@ impl<DB: Database> PoolConnection<DB> {
             } else {
                 false
             };
-            warn!("call return to job,res:{}",returned_to_pool);
+            warn!("call return to job,res:{},idle_count:{:?}",returned_to_pool,self.pool.num_idle());
             if !returned_to_pool {
                 pool.min_connections_maintenance(None).await;
             }
