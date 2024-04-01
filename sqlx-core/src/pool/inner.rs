@@ -18,6 +18,7 @@ use crate::pool::options::PoolConnectionMetadata;
 use futures_util::future::{self};
 use futures_util::FutureExt;
 use std::time::{Duration, Instant};
+use log::info;
 
 pub(crate) struct PoolInner<DB: Database> {
     pub(super) connect_options: <DB::Connection as Connection>::Options,
@@ -81,7 +82,7 @@ impl<DB: Database> PoolInner<DB> {
         self.is_closed.load(Ordering::Acquire)
     }
 
-    pub(super) fn close<'a>(self: &'a Arc<Self>) -> impl Future<Output = ()> + 'a {
+    pub(super) fn close<'a>(self: &'a Arc<Self>) -> impl Future<Output=()> + 'a {
         self.is_closed.store(true, Ordering::Release);
         self.on_closed.notify(usize::MAX);
 
@@ -159,7 +160,7 @@ impl<DB: Database> PoolInner<DB> {
                     Poll::Pending
                 }
             })
-            .await
+                .await
         } else {
             close_event.do_until(acquire_self).await
         }
@@ -194,7 +195,7 @@ impl<DB: Database> PoolInner<DB> {
 
     pub(super) fn release(&self, floating: Floating<DB, Live<DB>>) {
         // `options.after_release` is invoked by `PoolConnection::release_to_pool()`.
-
+        info!("release connection to pool");
         let Floating { inner: idle, guard } = floating.into_idle();
 
         if !self.idle_conns.push(idle).is_ok() {
@@ -271,7 +272,7 @@ impl<DB: Database> PoolInner<DB> {
                     // Attempt to connect...
                     return self.connect(deadline, guard).await;
                 }
-            }
+            },
         )
             .await
             .map_err(|_| Error::PoolTimedOut)?
