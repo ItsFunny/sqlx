@@ -123,7 +123,7 @@ impl<DB: Database> PoolConnection<DB> {
             } else {
                 false
             };
-            warn!("call return to job,res:{},idle_count:{:?}",returned_to_pool,self.pool.num_idle());
+            warn!("call return to job,res:{}",returned_to_pool);
             if !returned_to_pool {
                 pool.min_connections_maintenance(None).await;
             }
@@ -222,6 +222,7 @@ impl<DB: Database> Floating<DB, Live<DB>> {
                 Ok(true) => (),
                 Ok(false) => {
                     self.close().await;
+                    warn!("after_release returned false, closing connection");
                     return false;
                 }
                 Err(e) => {

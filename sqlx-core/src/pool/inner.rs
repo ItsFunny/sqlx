@@ -206,7 +206,8 @@ impl<DB: Database> PoolInner<DB> {
         // don't decrease the size
         guard.release_permit();
 
-        self.num_idle.fetch_add(1, Ordering::AcqRel);
+        let ret = self.num_idle.fetch_add(1, Ordering::AcqRel);
+        info!("release connection to pool done, idle_count:{}",ret);
     }
 
     /// Try to atomically increment the pool size for a new connection.
