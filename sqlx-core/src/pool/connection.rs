@@ -12,6 +12,7 @@ use crate::error::Error;
 use super::inner::{DecrementSizeGuard, PoolInner};
 use crate::pool::options::PoolConnectionMetadata;
 use std::future::Future;
+use log::{info, warn};
 
 /// A connection managed by a [`Pool`][crate::pool::Pool].
 ///
@@ -105,7 +106,8 @@ impl<DB: Database> PoolConnection<DB> {
     /// Test the connection to make sure it is still live before returning it to the pool.
     ///
     /// This effectively runs the drop handler eagerly instead of spawning a task to do it.
-    pub(crate) fn return_to_pool(&mut self) -> impl Future<Output = ()> + Send + 'static {
+    pub(crate) fn return_to_pool(&mut self) -> impl Future<Output=()> + Send + 'static {
+        warn!("call return to job");
         // float the connection in the pool before we move into the task
         // in case the returned `Future` isn't executed, like if it's spawned into a dying runtime
         // https://github.com/launchbadge/sqlx/issues/1396
@@ -121,7 +123,7 @@ impl<DB: Database> PoolConnection<DB> {
             } else {
                 false
             };
-
+            warn!("call return to job,res:{}",returned_to_pool);
             if !returned_to_pool {
                 pool.min_connections_maintenance(None).await;
             }
@@ -132,6 +134,7 @@ impl<DB: Database> PoolConnection<DB> {
 /// Returns the connection to the [`Pool`][crate::pool::Pool] it was checked-out from.
 impl<DB: Database> Drop for PoolConnection<DB> {
     fn drop(&mut self) {
+        warn!("pool connection drop,{:?},{:?}",self.live.is_some(),self.pool.options.min_connections>0);
         // We still need to spawn a task to maintain `min_connections`.
         if self.live.is_some() || self.pool.options.min_connections > 0 {
             #[cfg(not(feature = "_rt-async-std"))]
